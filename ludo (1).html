@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Classic Ludo 3D</title>
+    <style>
+        :root {
+            --yellow: #FFD700; --yellow-dark: #b89c00;
+            --blue: #00A2E8; --blue-dark: #0076a8;
+            --red: #ED1C24; --red-dark: #b5151b;
+            --green: #22B14C; --green-dark: #178036;
+            --board-bg: #FFFFFF;
+            --line-color: #333;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background: radial-gradient(circle at center, #2989d8 0%, #1a4a7d 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            min-height: 100vh; color: #333; overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* --- UI & Overlays --- */
+        #log {
+            font-size: clamp(14px, 3.5vw, 20px);
+            font-weight: bold; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            margin-bottom: 8px; text-align: center; min-height: 28px;
+            background: rgba(0,0,0,0.4); padding: 5px 20px; border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* --- ATTRACTIVE MENU DESIGN --- */
+        #menu-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            /* Blue background matching main page */
+            background: radial-gradient(circle at center, #2989d8 0%, #1a4a7d 100%);
+            z-index: 2000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .menu-box {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px; 
+            border-radius: 25px;
+            text-align: center; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,255,255,0.5);
+            max-width: 90%; width: 340px;
+            transform: translateY(0);
+            animation: floatUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .menu-box h1 { 
+            margin-top: 0; margin-bottom: 10px;
+            font-size: 42px; 
+            text-transform: uppercase; 
+            letter-spacing: 3px;
+            background: linear-gradient(45deg, var(--red), var(--blue), var(--yellow), var(--green));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.2));
+            font-weight: 900;
+        }
+
+        .menu-subtitle {
+            color: #555; font-size: 15px; margin-bottom: 30px; font-weight: 600;
+            background: rgba(0,0,0,0.05); padding: 5px 15px; border-radius: 15px;
+            display: inline-block;
+        }
+
+        .menu-btn {
+            position: relative;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            color: white; border: none; padding: 18px 20px; margin: 12px 0;
+            font-size: 18px; font-weight: bold; border-radius: 15px;
+            cursor: pointer; width: 100%; box-sizing: border-box; text-transform: uppercase;
+            transition: all 0.1s ease;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* 3D Button Effects */
+        .btn-vs-pc {
+            background: linear-gradient(to bottom, #4db8ff, #0076a8);
+            box-shadow: 0 6px 0 #005c8a, 0 12px 20px rgba(0,0,0,0.3);
+        }
+        .btn-local {
+            background: linear-gradient(to bottom, #4dff4d, #178036);
+            box-shadow: 0 6px 0 #0f5c23, 0 12px 20px rgba(0,0,0,0.3);
+        }
+
+        .menu-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #005c8a, inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .btn-local:active {
+            box-shadow: 0 0 0 #0f5c23, inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes floatUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* --- Game Layout --- */
+        .game-layout {
+            display: none; flex-direction: column; align-items: center;
+            width: 100%; max-width: 600px; gap: 8px; padding: 5px; box-sizing: border-box;
+        }
+
+        .player-row {
+            display: flex; justify-content: space-between; width: 100%; padding: 0 10px; box-sizing: border-box;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.9); border: 3px solid transparent;
+            border-radius: 10px; padding: 5px 10px; text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: all 0.3s ease;
+            display: flex; align-items: center; gap: 10px; opacity: 0.5;
+            position: relative; overflow: hidden; width: 130px;
+        }
+
+        .player-card.active {
+            opacity: 1; transform: scale(1.08);
+            box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.5); border-color: #fff;
+        }
+
+        .player-card.active::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            animation: shine 2s infinite;
+        }
+        @keyframes shine { 100% { left: 200%; } }
+
+        .player-name { font-weight: bold; font-size: clamp(11px, 3vw, 14px); text-transform: uppercase; line-height: 1.2; width: 100%;}
+
+        /* --- 3D Dice --- */
+        .dice-scene { width: 40px; height: 40px; perspective: 400px; cursor: pointer; flex-shrink: 0; }
+        .disabled .dice-scene { cursor: not-allowed; }
+        .dice-cube {
+            width: 100%; height: 100%; position: relative; transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            transform: translateZ(-20px) rotateX(-15deg) rotateY(-15deg);
+        }
+        .dice-scene:not(.disabled):hover .dice-cube { filter: drop-shadow(0 0 8px white); }
+        .dice-face {
+            position: absolute; width: 40px; height: 40px; background: white;
+            border: 2px solid #ccc; border-radius: 8px; display: grid;
+            grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+            padding: 4px; box-sizing: border-box; gap: 2px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+        .dot { background-color: black; border-radius: 50%; width: 7px; height: 7px; justify-self: center; align-self: center; display: none; }
+        .dice-face.front  { transform: rotateY(  0deg) translateZ(20px); }
+        .dice-face.back   { transform: rotateY(180deg) translateZ(20px); }
+        .dice-face.right  { transform: rotateY( 90deg) translateZ(20px); }
+        .dice-face.left   { transform: rotateY(-90deg) translateZ(20px); }
+        .dice-face.top    { transform: rotateX( 90deg) translateZ(20px); }
+        .dice-face.bottom { transform: rotateX(-90deg) translateZ(20px); }
+        
+        .dice-face.front .dot:nth-child(5) { display: block; }
+        .dice-face.top .dot:nth-child(1), .dice-face.top .dot:nth-child(9) { display: block; }
+        .dice-face.right .dot:nth-child(1), .dice-face.right .dot:nth-child(5), .dice-face.right .dot:nth-child(9) { display: block; }
+        .dice-face.left .dot:nth-child(1), .dice-face.left .dot:nth-child(3), .dice-face.left .dot:nth-child(7), .dice-face.left .dot:nth-child(9) { display: block; }
+        .dice-face.bottom .dot:nth-child(1), .dice-face.bottom .dot:nth-child(3), .dice-face.bottom .dot:nth-child(5), .dice-face.bottom .dot:nth-child(7), .dice-face.bottom .dot:nth-child(9) { display: block; }
+        .dice-face.back .dot:nth-child(1), .dice-face.back .dot:nth-child(3), .dice-face.back .dot:nth-child(4), .dice-face.back .dot:nth-child(6), .dice-face.back .dot:nth-child(7), .dice-face.back .dot:nth-child(9) { display: block; }
+
+        .spin-animation { animation: spin3D 0.5s ease-in-out forwards; }
+        @keyframes spin3D {
+            0% { transform: translateZ(-20px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            50% { transform: translateZ(50px) rotateX(360deg) rotateY(360deg) rotateZ(180deg); }
+            100% { transform: translateZ(-20px) rotateX(720deg) rotateY(720deg) rotateZ(360deg); }
+        }
+
+        /* --- Board --- */
+        .ludo-board {
+            width: 95vw; height: 95vw; max-width: 550px; max-height: 550px;
+            background: var(--board-bg); border: 2px solid var(--line-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;
+            border-radius: 8px; overflow: hidden;
+        }
+        .board-grid { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); }
+        .cell { border: 1px solid rgba(0,0,0,0.15); box-sizing: border-box; position: relative; }
+
+        .base { position: absolute; width: 40%; height: 40%; display: flex; justify-content: center; align-items: center; z-index: 1; }
+        .base-red { top: 0; left: 0; background-color: var(--red); }
+        .base-blue { top: 0; right: 0; background-color: var(--blue); }
+        .base-green { bottom: 0; left: 0; background-color: var(--green); }
+        .base-yellow { bottom: 0; right: 0; background-color: var(--yellow); }
+        .base-inner { width: 65%; height: 65%; background: white; border-radius: 15%; box-shadow: inset 0 0 15px rgba(0,0,0,0.3); }
+
+        .center-area {
+            position: absolute; top: 40%; left: 40%; width: 20%; height: 20%;
+            border: 1px solid var(--line-color); box-sizing: border-box;
+            background: conic-gradient(from 45deg, var(--blue) 0deg 90deg, var(--yellow) 90deg 180deg, var(--green) 180deg 270deg, var(--red) 270deg 360deg);
+        }
+
+        .bg-yellow { background-color: var(--yellow); } .bg-blue { background-color: var(--blue); }
+        .bg-red { background-color: var(--red); } .bg-green { background-color: var(--green); }
+
+        .star::after {
+            content: '★'; font-size: clamp(14px, 4vw, 22px); position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.8; color: #444; z-index: 0;
+        }
+
+        /* --- Tokens & Animation --- */
+        .token {
+            width: calc(100% / 15 * 0.75); height: calc(100% / 15 * 0.75);
+            border-radius: 50%; position: absolute;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.7);
+            border: 2px solid white; cursor: pointer; z-index: 10;
+            transform: translate(-50%, -50%);
+            transition: top 0.25s linear, left 0.25s linear, transform 0.25s ease-in-out;
+        }
+        .token::after {
+            content: ''; position: absolute; top: 15%; left: 15%; right: 15%; bottom: 15%;
+            border-radius: 50%; border: 1px solid rgba(0,0,0,0.3);
+        }
+
+        .token-yellow { background: linear-gradient(to bottom, #ffe55c, var(--yellow-dark)); }
+        .token-blue { background: linear-gradient(to bottom, #4db8ff, var(--blue-dark)); }
+        .token-red { background: linear-gradient(to bottom, #ff4d4d, var(--red-dark)); }
+        .token-green { background: linear-gradient(to bottom, #4dff4d, var(--green-dark)); }
+
+        /* The Pointer / Arrow for playable tokens */
+        .pointer {
+            position: absolute; top: -120%; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: calc(100vw / 15 * 0.2) solid transparent;
+            border-right: calc(100vw / 15 * 0.2) solid transparent;
+            border-top: calc(100vw / 15 * 0.35) solid white;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));
+            animation: pointerBounce 0.5s infinite alternate;
+            display: none; pointer-events: none; z-index: 20;
+        }
+        
+        /* Updated Z-Index !important to ensure Playable tokens float to top of stack */
+        .token.highlight { 
+            cursor: pointer; 
+            z-index: 999 !important; 
+            animation: tokenPulse 1s infinite; 
+        }
+        .token.highlight .pointer { display: block; }
+        
+        @keyframes pointerBounce { from { top: -100%; } to { top: -160%; } }
+        @keyframes tokenPulse { 0%, 100% { box-shadow: 0 4px 6px rgba(0,0,0,0.6); } 50% { box-shadow: 0 0 15px 5px white; } }
+
+        /* Disable pointer events for inactive tokens during a specific turn to allow click-through */
+        .turn-red .token:not(.token-red),
+        .turn-blue .token:not(.token-blue),
+        .turn-yellow .token:not(.token-yellow),
+        .turn-green .token:not(.token-green) {
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Start Menu -->
+    <div id="menu-modal">
+        <div class="menu-box">
+            <h1>LUDO 3D</h1>
+            <div class="menu-subtitle">★ Safe Stars Enabled ★</div>
+            <button class="menu-btn btn-vs-pc" onclick="startGame('vs_pc')">
+                <span style="font-size: 24px;">🤖</span> 1 Player vs CPU
+            </button>
+            <button class="menu-btn btn-local" onclick="startGame('local')">
+                <span style="font-size: 24px;">👥</span> Pass & Play (4P)
+            </button>
+        </div>
+    </div>
+
+    <!-- Game UI -->
+    <div id="log">Welcome! Select mode to begin.</div>
+
+    <div class="game-layout" id="game-ui">
+        <!-- Top Row -->
+        <div class="player-row">
+            <div class="player-card active" id="card-red">
+                <div class="player-name" id="name-red">You<br>(Red)</div>
+                <div class="dice-scene" onclick="handleDiceClick('red')">
+                    <div class="dice-cube" id="dice-red">
+                        <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="player-card" id="card-blue">
+                <div class="dice-scene disabled" onclick="handleDiceClick('blue')">
+                    <div class="dice-cube" id="dice-blue">
+                         <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+                <div class="player-name" id="name-blue">Player<br>(Blue)</div>
+            </div>
+        </div>
+
+        <!-- Board -->
+        <div class="ludo-board" id="board">
+            <div class="board-grid" id="grid"></div>
+            <div class="base base-red"><div class="base-inner"></div></div>
+            <div class="base base-blue"><div class="base-inner"></div></div>
+            <div class="base base-yellow"><div class="base-inner"></div></div>
+            <div class="base base-green"><div class="base-inner"></div></div>
+            <div class="center-area"></div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="player-row">
+            <div class="player-card" id="card-green">
+                <div class="player-name" id="name-green">Player<br>(Green)</div>
+                <div class="dice-scene disabled" onclick="handleDiceClick('green')">
+                    <div class="dice-cube" id="dice-green">
+                         <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="player-card" id="card-yellow">
+                <div class="dice-scene disabled" onclick="handleDiceClick('yellow')">
+                    <div class="dice-cube" id="dice-yellow">
+                         <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+                <div class="player-name" id="name-yellow">Player<br>(Yellow)</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Config & Data Maps ---
+    const COLORS = ['red', 'blue', 'yellow', 'green'];
+    
+    let PLAYER_CONFIG = {
+        red:    { isBot: false, startIdx: 0  },
+        blue:   { isBot: false, startIdx: 13 },
+        yellow: { isBot: false, startIdx: 26 },
+        green:  { isBot: false, startIdx: 39 }
+    };
+
+    // 52-tile track coordinates [row, col]
+    const MAIN_PATH = [
+        [6,1], [6,2],[6,3],[6,4], [6,5],       // 0-4   (Red)
+        [5,6], [4,6], [3,6], [2,6],[1,6],[0,6],// 5-10
+        [0,7], [0,8],                          // 11-12
+        [1,8], [2,8],[3,8],[4,8], [5,8],       // 13-17 (Blue)
+        [6,9], [6,10], [6,11],[6,12],[6,13], [6,14], // 18-23
+        [7,14], [8,14],                        // 24-25
+        [8,13],[8,12], [8,11], [8,10],[8,9],   // 26-30 (Yellow)
+        [9,8],[10,8],[11,8], [12,8], [13,8],[14,8], // 31-36
+        [14,7],[14,6],                         // 37-38
+        [13,6],[12,6],[11,6],[10,6], [9,6],    // 39-43 (Green)
+        [8,5], [8,4],[8,3],[8,2],[8,1], [8,0], // 44-49
+        [7,0],[6,0]                            // 50-51
+    ];
+
+    // Star Locations based on Visual Icon
+    const SAFE_COORDS = [
+        "6,1", "8,2",   // Red
+        "1,8", "2,6",   // Blue
+        "8,13", "6,12", // Yellow
+        "13,6", "12,8"  // Green
+    ];
+
+    const HOME_PATHS = {
+        red:    [[7,1], [7,2], [7,3],[7,4],[7,5]],
+        blue:   [[1,7],[2,7], [3,7],[4,7], [5,7]],
+        yellow: [[7,13], [7,12], [7,11],[7,10], [7,9]],
+        green:  [[13,7],[12,7], [11,7], [10,7],[9,7]]
+    };
+
+    const BASE_SPOTS = {
+        red:    [[1.5, 1.5],[1.5, 3.5], [3.5, 1.5],[3.5, 3.5]],    
+        blue:   [[1.5, 10.5],[1.5, 12.5], [3.5, 10.5],[3.5, 12.5]],
+        yellow: [[10.5, 10.5],[10.5, 12.5],[12.5, 10.5],[12.5, 12.5]],
+        green:  [[10.5, 1.5], [10.5, 3.5],[12.5, 1.5],[12.5, 3.5]]  
+    };
+
+    const DICE_TRANSFORMS = {
+        1: 'translateZ(-20px) rotateX(0deg) rotateY(0deg)',
+        2: 'translateZ(-20px) rotateX(-90deg) rotateY(0deg)',
+        3: 'translateZ(-20px) rotateX(0deg) rotateY(-90deg)',
+        4: 'translateZ(-20px) rotateX(0deg) rotateY(90deg)',
+        5: 'translateZ(-20px) rotateX(90deg) rotateY(0deg)',
+        6: 'translateZ(-20px) rotateX(180deg) rotateY(0deg)'
+    };
+
+    // --- State Variables ---
+    let state = {
+        turnIndex: 0, 
+        diceValue: null,
+        diceRolled: false,
+        tokens: { red:[-1,-1,-1,-1], green:[-1,-1,-1,-1], yellow:[-1,-1,-1,-1], blue:[-1,-1,-1,-1] },
+        gameOver: false,
+        isAnimating: false,
+        consecutiveSixes: 0,
+        lastMovedToken: null
+    };
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    // --- Initialization ---
+    function startGame(mode) {
+        document.getElementById('menu-modal').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        
+        if (mode === 'vs_pc') {
+            PLAYER_CONFIG.blue.isBot = true;
+            PLAYER_CONFIG.yellow.isBot = true;
+            PLAYER_CONFIG.green.isBot = true;
+            document.getElementById('name-red').innerHTML = "You<br>(Red)";
+            document.getElementById('name-blue').innerHTML = "Bot<br>(Blue)";
+            document.getElementById('name-yellow').innerHTML = "Bot<br>(Yellow)";
+            document.getElementById('name-green').innerHTML = "Bot<br>(Green)";
+        }
+
+        initBoard();
+        state.turnIndex = 0; // Red starts
+        updateUI();
+        log(`Game Started! RED's turn.`);
+    }
+
+    function initBoard() {
+        const gridEl = document.getElementById('grid');
+        gridEl.innerHTML = ''; 
+        
+        for (let r = 0; r < 15; r++) {
+            for (let c = 0; c < 15; c++) {
+                if ((r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8) || (r > 5 && r < 9 && c > 5 && c < 9)) {
+                    gridEl.appendChild(document.createElement('div')); continue; 
+                }
+
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+
+                if (r===6 && c===1) cell.classList.add('bg-red');
+                if (r===7 && c>0 && c<6) cell.classList.add('bg-red');
+                if (r===1 && c===8) cell.classList.add('bg-blue');
+                if (c===7 && r>0 && r<6) cell.classList.add('bg-blue');
+                if (r===8 && c===13) cell.classList.add('bg-yellow');
+                if (r===7 && c>8 && c<14) cell.classList.add('bg-yellow');
+                if (r===13 && c===6) cell.classList.add('bg-green');
+                if (c===7 && r>8 && r<14) cell.classList.add('bg-green');
+
+                if (SAFE_COORDS.includes(`${r},${c}`)) {
+                    cell.classList.add('star');
+                }
+                
+                gridEl.appendChild(cell);
+            }
+        }
+
+        const boardEl = document.getElementById('board');
+        document.querySelectorAll('.token').forEach(t => t.remove()); 
+
+        COLORS.forEach(color => {
+            for (let i = 0; i < 4; i++) {
+                const token = document.createElement('div');
+                token.className = `token token-${color}`;
+                token.id = `token-${color}-${i}`;
+                
+                const pointer = document.createElement('div');
+                pointer.className = 'pointer';
+                token.appendChild(pointer);
+
+                token.onclick = () => handleTokenClick(color, i);
+                boardEl.appendChild(token);
+            }
+        });
+
+        COLORS.forEach(c => document.getElementById(`dice-${c}`).style.transform = DICE_TRANSFORMS[6]);
+        updateBoard();
+    }
+
+    // --- Core UI & Positioning ---
+    function getCurrentPlayer() { return COLORS[state.turnIndex]; }
+    function log(msg) { document.getElementById('log').innerText = msg; }
+
+    function updateUI() {
+        COLORS.forEach(c => {
+            document.getElementById(`card-${c}`).classList.remove('active');
+            document.getElementById(`card-${c}`).querySelector('.dice-scene').classList.add('disabled');
+        });
+        
+        const current = getCurrentPlayer();
+        document.getElementById(`card-${current}`).classList.add('active');
+        
+        // Update Board Class for Pointer Events Logic (Click through enemies)
+        const boardEl = document.getElementById('board');
+        boardEl.className = 'ludo-board ' + `turn-${current}`;
+
+        if (!state.diceRolled && !PLAYER_CONFIG[current].isBot && !state.gameOver && !state.isAnimating) {
+            document.getElementById(`card-${current}`).querySelector('.dice-scene').classList.remove('disabled');
+        }
+    }
+
+    function getGridPercentage(r, c) { return { top: `${(r + 0.5) * (100 / 15)}%`, left: `${(c + 0.5) * (100 / 15)}%` }; }
+
+    const offsetMap =[ {x:0,y:0}, {x:-10,y:-10}, {x:10,y:10}, {x:-10,y:10}, {x:10,y:-10} ];
+
+    function updateBoard(animatingTokenColor = null, animatingTokenIndex = null) {
+        const cellCounts = {}; 
+        
+        COLORS.forEach(color => {
+            state.tokens[color].forEach((pos, i) => {
+                document.getElementById(`token-${color}-${i}`).classList.remove('highlight');
+                if (pos > -1 && pos < 56 && !(color === animatingTokenColor && i === animatingTokenIndex)) {
+                    let key = pos < 51 ? `main-${(PLAYER_CONFIG[color].startIdx + pos) % 52}` : `home-${color}-${pos}`;
+                    if (!cellCounts[key]) cellCounts[key] =[];
+                    cellCounts[key].push({color, i});
+                }
+            });
+        });
+
+        COLORS.forEach(color => {
+            state.tokens[color].forEach((pos, i) => {
+                const tokenEl = document.getElementById(`token-${color}-${i}`);
+                if (!tokenEl) return;
+
+                let coords = { r: 0, c: 0 };
+                let tileKey = null;
+
+                try {
+                    if (pos === -1) {
+                        coords.r = BASE_SPOTS[color][i][0]; coords.c = BASE_SPOTS[color][i][1];
+                    } else if (pos === 56) {
+                        coords.r = 7; coords.c = 7; 
+                    } else if (pos > -1 && pos < 51) {
+                        const absIdx = (PLAYER_CONFIG[color].startIdx + pos) % 52;
+                        coords.r = MAIN_PATH[absIdx][0]; coords.c = MAIN_PATH[absIdx][1];
+                        tileKey = `main-${absIdx}`;
+                    } else if (pos >= 51 && pos < 56) {
+                        const homeIdx = pos - 51;
+                        if(HOME_PATHS[color] && HOME_PATHS[color][homeIdx]) {
+                            coords.r = HOME_PATHS[color][homeIdx][0]; coords.c = HOME_PATHS[color][homeIdx][1];
+                            tileKey = `home-${color}-${pos}`;
+                        }
+                    }
+                } catch(e) { return; }
+
+                const perc = getGridPercentage(coords.r, coords.c);
+                const isStar = SAFE_COORDS.includes(`${coords.r},${coords.c}`);
+                
+                if (tileKey && cellCounts[tileKey] && cellCounts[tileKey].length > 1 && !(color === animatingTokenColor && i === animatingTokenIndex)) {
+                    const overlapIdx = cellCounts[tileKey].findIndex(t => t.color === color && t.i === i);
+                    
+                    if (isStar) {
+                        // Stack Perfectly on Stars
+                        tokenEl.style.top = perc.top;
+                        tokenEl.style.left = perc.left;
+                        tokenEl.style.transform = `translate(-50%, -50%) scale(1)`; 
+                        tokenEl.style.zIndex = 100 + overlapIdx; 
+                    } else {
+                        // Spread on normal cells
+                        const off = offsetMap[Math.min(overlapIdx + 1, 4)];
+                        tokenEl.style.top = `calc(${perc.top} + ${off.y}%)`;
+                        tokenEl.style.left = `calc(${perc.left} + ${off.x}%)`;
+                        tokenEl.style.transform = `translate(-50%, -50%) scale(0.85)`;
+                        tokenEl.style.zIndex = 10 + overlapIdx;
+                    }
+                } else {
+                    tokenEl.style.top = perc.top;
+                    tokenEl.style.left = perc.left;
+                    if (pos === 56) {
+                        tokenEl.style.transform = `translate(-50%, -50%) scale(0.6) translate(${(Math.random()*20)-10}px, ${(Math.random()*20)-10}px)`;
+                    } else {
+                        tokenEl.style.transform = `translate(-50%, -50%) scale(1)`;
+                    }
+                    tokenEl.style.zIndex = 10;
+                }
+            });
+        });
+    }
+
+    // --- Dice & Game Logic ---
+
+    function getBlockades() {
+        let blockades = new Set();
+        COLORS.forEach(c => {
+            let counts = {};
+            state.tokens[c].forEach(pos => {
+                if (pos > -1 && pos < 51) {
+                    let absIdx = (PLAYER_CONFIG[c].startIdx + pos) % 52;
+                    counts[absIdx] = (counts[absIdx] || 0) + 1;
+                    if (counts[absIdx] >= 2) blockades.add(absIdx);
+                }
+            });
+        });
+        return blockades;
+    }
+
+    function getValidMoves(color, roll) {
+        let blockades = getBlockades();
+        let validMoves = [];
+        
+        state.tokens[color].forEach((pos, idx) => {
+            if (pos === -1) {
+                if (roll === 6) validMoves.push(idx); 
+            } else if (pos > -1 && pos + roll <= 56) {
+                let isBlocked = false;
+                for (let step = 1; step <= roll; step++) {
+                    let checkPos = pos + step;
+                    if (checkPos < 51) {
+                        let checkAbsIdx = (PLAYER_CONFIG[color].startIdx + checkPos) % 52;
+                    }
+                }
+                if (!isBlocked) validMoves.push(idx);
+            }
+        });
+        return validMoves;
+    }
+
+    function handleDiceClick(clickedColor) {
+        const current = getCurrentPlayer();
+        if (state.gameOver || state.diceRolled || PLAYER_CONFIG[current].isBot || clickedColor !== current || state.isAnimating) return;
+        rollDice();
+    }
+
+    function rollDice() {
+        state.diceRolled = true;
+        const current = getCurrentPlayer();
+        const diceCube = document.getElementById(`dice-${current}`);
+        
+        updateUI(); 
+
+        diceCube.classList.remove('spin-animation');
+        void diceCube.offsetWidth; 
+        diceCube.classList.add('spin-animation');
+
+        setTimeout(() => {
+            state.diceValue = Math.floor(Math.random() * 6) + 1;
+            
+            diceCube.style.transform = DICE_TRANSFORMS[state.diceValue];
+            diceCube.classList.remove('spin-animation');
+
+            if (state.diceValue === 6) {
+                state.consecutiveSixes++;
+                if (state.consecutiveSixes === 3) {
+                    log(`Three 6s! Turn forfeited.`);
+                    if (state.lastMovedToken && state.lastMovedToken.color === current) {
+                        let lColor = state.lastMovedToken.color;
+                        let lIdx = state.lastMovedToken.index;
+                        if (state.tokens[lColor][lIdx] > -1 && state.tokens[lColor][lIdx] < 56) {
+                            state.tokens[lColor][lIdx] = -1;
+                            updateBoard();
+                        }
+                    }
+                    setTimeout(() => { nextTurn(); }, 2000);
+                    return;
+                } else {
+                    log(`${current.toUpperCase()} rolled a 6! (x${state.consecutiveSixes})`);
+                }
+            } else {
+                state.consecutiveSixes = 0;
+                log(`${current.toUpperCase()} rolled a ${state.diceValue}`);
+            }
+
+            setTimeout(processPostRoll, 500); 
+        }, 500); 
+    }
+
+    function processPostRoll() {
+        const current = getCurrentPlayer();
+        const validMoves = getValidMoves(current, state.diceValue);
+
+        if (validMoves.length === 0) {
+            log(`No valid moves.`);
+            setTimeout(() => { nextTurn(); }, 1200);
+        } else if (validMoves.length === 1 && PLAYER_CONFIG[current].isBot) {
+            setTimeout(() => stepMove(current, validMoves[0], state.diceValue), 600);
+        } else if (PLAYER_CONFIG[current].isBot) {
+            setTimeout(() => {
+                let bestMove = validMoves[0];
+                stepMove(current, bestMove, state.diceValue);
+            }, 800);
+        } else {
+            validMoves.forEach(idx => {
+                document.getElementById(`token-${current}-${idx}`).classList.add('highlight');
+            });
+        }
+    }
+
+    function handleTokenClick(color, index) {
+        if (state.gameOver || !state.diceRolled || color !== getCurrentPlayer() || PLAYER_CONFIG[color].isBot || state.isAnimating) return;
+        
+        const validMoves = getValidMoves(color, state.diceValue);
+        if (validMoves.includes(index)) {
+            document.querySelectorAll('.token').forEach(t => t.classList.remove('highlight'));
+            stepMove(color, index, state.diceValue);
+        }
+    }
+
+    async function stepMove(color, index, steps) {
+        state.isAnimating = true;
+        state.lastMovedToken = { color, index };
+        let currentPos = state.tokens[color][index];
+
+        if (currentPos === -1) {
+            state.tokens[color][index] = 0;
+            updateBoard(color, index);
+            await sleep(300);
+        } else {
+            for (let i = 0; i < steps; i++) {
+                state.tokens[color][index]++;
+                updateBoard(color, index); 
+                await sleep(250); 
+            }
+        }
+        
+        state.isAnimating = false;
+        postMoveChecks(color, index);
+    }
+
+    async function postMoveChecks(color, index) {
+        let newPos = state.tokens[color][index];
+        let gainedExtraTurn = false;
+        let killLog = "";
+
+        if (newPos === 56) {
+            killLog = `Reached Center! Extra roll!`;
+            gainedExtraTurn = true;
+            checkGameWin();
+        } 
+        else if (newPos < 51 && newPos > -1) {
+            const absoluteIdx = (PLAYER_CONFIG[color].startIdx + newPos) % 52;
+            const r = MAIN_PATH[absoluteIdx][0];
+            const c = MAIN_PATH[absoluteIdx][1];
+            
+            // Safe Spot Logic: Overlap is handled visually in updateBoard
+            const isSafeSpot = SAFE_COORDS.includes(`${r},${c}`);
+
+            // Only attempt capture if NOT on a Safe Spot
+            if (!isSafeSpot) {
+                for (let oppColor of COLORS) {
+                    if (oppColor !== color) {
+                        for (let oppIdx = 0; oppIdx < 4; oppIdx++) {
+                            let oppPos = state.tokens[oppColor][oppIdx];
+                            if (oppPos > -1 && oppPos < 51) {
+                                const oppAbsoluteIdx = (PLAYER_CONFIG[oppColor].startIdx + oppPos) % 52;
+                                if (absoluteIdx === oppAbsoluteIdx) {
+                                    killLog = `Captured ${oppColor.toUpperCase()}! Extra roll!`;
+                                    state.tokens[oppColor][oppIdx] = -1; // Send to yard
+                                    gainedExtraTurn = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        updateBoard(); 
+
+        if (state.diceValue === 6) gainedExtraTurn = true;
+
+        if (gainedExtraTurn && !state.gameOver) {
+            state.diceRolled = false;
+            let msg = killLog !== "" ? killLog : `${color.toUpperCase()} rolled 6. Extra roll!`;
+            setTimeout(() => {
+                log(msg);
+                updateUI();
+                if (PLAYER_CONFIG[color].isBot) setTimeout(rollDice, 1000);
+            }, 500);
+        } else {
+            setTimeout(() => { nextTurn(); }, 600);
+        }
+    }
+
+    function nextTurn() {
+        if (state.gameOver) return;
+        state.consecutiveSixes = 0;
+        state.turnIndex = (state.turnIndex + 1) % 4;
+        state.diceRolled = false;
+        state.diceValue = null;
+        updateUI();
+        log(`${getCurrentPlayer().toUpperCase()}'s Turn`);
+        
+        if (PLAYER_CONFIG[getCurrentPlayer()].isBot) {
+            setTimeout(rollDice, 1200);
+        }
+    }
+
+    function checkGameWin() {
+        const current = getCurrentPlayer();
+        const won = state.tokens[current].every(pos => pos === 56);
+        if (won) {
+            state.gameOver = true;
+            log(`🏆 ${current.toUpperCase()} WINS! 🏆`);
+            setTimeout(() => alert(`🏆 ${current.toUpperCase()} WINS THE GAME! 🏆`), 500);
+        }
+    }
+
+</script>
+</body>
+</html>
